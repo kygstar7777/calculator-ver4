@@ -1,120 +1,117 @@
-// 계산 버튼 클릭 시 계산 함수 실행
-document.getElementById('calculateButton').addEventListener('click', calculate);
+document.getElementById("calculateButton").addEventListener("click", function() {
+    // 입력값 가져오기
+    const initialInvestment = parseFloat(document.getElementById("initialInvestment").value) * 10000; // 만원 단위
+    const dividendRate = parseFloat(document.getElementById("dividendRate").value) / 100;
+    const dividendGrowthRate = parseFloat(document.getElementById("dividendGrowthRate").value) / 100;
+    const stockGrowthRate = parseFloat(document.getElementById("stockGrowthRate").value) / 100;
+    const monthlyInvestment = parseFloat(document.getElementById("monthlyInvestment").value) * 10000; // 만원 단위
+    const monthlyInvestmentGrowthRate = parseFloat(document.getElementById("monthlyInvestmentGrowthRate").value) / 100;
+    const reinvestmentRate = parseFloat(document.getElementById("reinvestmentRate").value) / 100;
+    const taxRate = parseFloat(document.getElementById("taxRate").value) / 100;
+    const inflationRate = parseFloat(document.getElementById("inflationRate").value) / 100;
+    const targetMonthlyDividend = parseFloat(document.getElementById("targetMonthlyDividend").value) * 10000; // 만원 단위
 
-function calculate() {
-    // 입력된 값을 불러와서 변수에 저장 (만원 단위는 10000으로 변환)
-    let initialInvestment = parseFloat(document.getElementById('initialInvestment').value) * 10000; 
-    let dividendRate = parseFloat(document.getElementById('dividendRate').value) / 100; 
-    let dividendGrowthRate = parseFloat(document.getElementById('dividendGrowthRate').value) / 100; 
-    let stockGrowthRate = parseFloat(document.getElementById('stockGrowthRate').value) / 100; 
-    let monthlyInvestment = parseFloat(document.getElementById('monthlyInvestment').value) * 10000; 
-    let monthlyInvestmentGrowthRate = parseFloat(document.getElementById('monthlyInvestmentGrowthRate').value) / 100; 
-    let reinvestmentRate = parseFloat(document.getElementById('reinvestmentRate').value) / 100; 
-    let taxRate = parseFloat(document.getElementById('taxRate').value) / 100; 
-    let inflationRate = parseFloat(document.getElementById('inflationRate').value) / 100; 
-    let targetMonthlyDividend = parseFloat(document.getElementById('targetMonthlyDividend').value) * 10000; 
-
-    // 결과를 저장할 배열 선언
+    // 결과 변수 초기화
     let results = [];
-    let year = 1; // 현재 연차 (1년차부터 시작)
-    
-    // 초기 자산 및 투자금 설정
-    let totalInvestment = initialInvestment; 
-    let totalReinvestedDividends = 0; 
-    let totalAssets = 0; // 총 자산 초기화
+    let totalInvestment = initialInvestment;
+    let totalDividends = 0;
+    let accumulatedDividends = 0; // 누적 배당금 초기화
 
-    // 목표 월 배당금에 도달할 때까지 반복
-    while (true) {
-        // 연간 투자금 계산
-        let annualInvestment = totalInvestment + (monthlyInvestment * 12); // 연간 투자금
-
-        // 연간 배당금 계산
-        let annualDividends = annualInvestment * dividendRate * reinvestmentRate * (1 - taxRate) * (1 - inflationRate); 
-
-        // 연말 총 자산 계산
-        totalAssets = (annualInvestment + annualDividends) * (1 + stockGrowthRate); 
+    for (let year = 1; year <= 30; year++) {
+        // 첫해 월 투자금
+        const currentMonthlyInvestment = year === 1 ? monthlyInvestment : monthlyInvestment * Math.pow(1 + monthlyInvestmentGrowthRate, year - 1);
         
-        // 결과를 배열에 저장
+        // 연 투자금
+        const annualInvestment = totalInvestment + currentMonthlyInvestment * 12;
+
+        // 첫해 배당금 계산
+        const annualDividend = (annualInvestment * dividendRate) * reinvestmentRate * (1 - taxRate) * (1 - inflationRate);
+        
+        // 배당금 성장률 적용
+        const adjustedDividend = annualDividend * Math.pow(1 + dividendGrowthRate, year - 1); // 배당금 성장률 적용
+        
+        // 총 자산
+        const totalAssets = (annualInvestment + adjustedDividend) * (1 + stockGrowthRate);
+
+        // 결과 저장
         results.push({
             year: year,
-            monthlyDividend: annualDividends / 12 / 10000, // 연 배당금을 12로 나누어 월 평균 배당금으로 계산
-            totalAssets: totalAssets / 10000, // 연말 총 자산
-            cumulativeInvestment: totalInvestment / 10000, // 누적 투자 원금
-            cumulativeDividends: totalReinvestedDividends / 10000 // 누적 투자 배당금
+            annualDividend: adjustedDividend,
+            monthlyDividend: adjustedDividend / 12,
+            totalAssets: totalAssets,
+            totalInvestment: totalInvestment + currentMonthlyInvestment * 12,
+            totalDividends: accumulatedDividends + adjustedDividend
         });
 
-        // 재투자된 배당금 업데이트
-        totalReinvestedDividends += annualDividends; 
-
-        // 다음 해 월 투자금 계산
-        monthlyInvestment *= (1 + monthlyInvestmentGrowthRate); 
-        totalInvestment = annualInvestment; // 누적 투자 원금 업데이트
-        
-        // 목표 월 배당금에 도달했는지 확인
-        if ((annualDividends / 12) >= targetMonthlyDividend) {
-            break; // 목표 달성 시 종료
-        }
-
-        year++; // 연도 증가
+        // 총 투자금과 배당금 업데이트
+        totalInvestment += currentMonthlyInvestment * 12;
+        accumulatedDividends += adjustedDividend;
     }
 
-    // 계산된 결과를 화면에 출력
-    displayResults(results, targetMonthlyDividend / 10000, year);
-}
-
-// 계산된 결과를 화면에 표시하는 함수
-function displayResults(results, targetMonthlyDividend, yearsTaken) {
-    let tbody = document.querySelector('#resultTable tbody');
-    tbody.innerHTML = ''; // 기존 테이블 데이터 초기화
-
-    // 결과 데이터를 테이블에 추가
+    // 결과 출력
+    let resultHTML = "<h2>계산 결과 | Calculation Results</h2>";
+    resultHTML += "<table border='1'><tr><th>연도 | Year</th><th>연 배당금 | Annual Dividend (만원)</th><th>월 배당금 | Monthly Dividend (만원)</th><th>총 자산 | Total Assets (만원)</th><th>누적 투자 원금 | Cumulative Investment (만원)</th><th>누적 투자 배당금 | Cumulative Dividend (만원)</th></tr>";
     results.forEach(result => {
-        let row = document.createElement('tr');
-        row.innerHTML = 
-            `<td title="년수">${result.year} 년</td>
-             <td title="월 평균 배당금 (만원)">${Math.floor(result.monthlyDividend).toLocaleString()} 만원</td>
-             <td title="연말 총 자산 (만원)">${Math.floor(result.totalAssets).toLocaleString()} 만원</td>
-             <td title="누적 투자 원금 (만원)">${Math.floor(result.cumulativeInvestment).toLocaleString()} 만원</td>
-             <td title="누적 투자 배당금 (만원)">${Math.floor(result.cumulativeDividends).toLocaleString()} 만원</td>`;
-        tbody.appendChild(row); // 새로운 행을 테이블에 추가
+        resultHTML += `<tr>
+            <td>${result.year}</td>
+            <td>${(result.annualDividend / 10000).toFixed(2)}</td>
+            <td>${(result.monthlyDividend / 10000).toFixed(2)}</td>
+            <td>${(result.totalAssets / 10000).toFixed(2)}</td>
+            <td>${(result.totalInvestment / 10000).toFixed(2)}</td>
+            <td>${(result.totalDividends / 10000).toFixed(2)}</td>
+        </tr>`;
     });
+    resultHTML += "</table>";
 
-    // 결과 메시지 출력
-    document.getElementById('resultMessage').textContent = `${yearsTaken} 년 후 목표 월 배당금에 도달합니다. 경제적 자유를 위해 화이팅하세요.`;
+    // 목표 달성 계산
+    const yearsToTarget = results.findIndex(result => result.monthlyDividend >= targetMonthlyDividend) + 1;
+
+    if (yearsToTarget > 0) {
+        resultHTML += `<p>월 투자금 ${monthlyInvestment / 10000}만원으로 목표 월 배당금을 달성하기 위해서는 총 ${yearsToTarget}년이 걸립니다.</p>`;
+    } else {
+        resultHTML += `<p>목표 월 배당금을 달성할 수 없습니다. 월 투자금을 증가시키세요.</p>`;
+    }
+    
+    resultHTML += "<p>경제적 자유를 위해 화이팅하세요!</p>";
+    document.getElementById("results").innerHTML = resultHTML;
 
     // 그래프 그리기
-    drawGraph(results);
-}
+    drawChart(results);
+});
 
-// 그래프 그리기 함수
-function drawGraph(results) {
-    const ctx = document.getElementById('myChart').getContext('2d');
-    const labels = results.map(result => `${result.year}년`);
-    const monthlyDividends = results.map(result => result.monthlyDividend);
-    const totalAssets = results.map(result => result.totalAssets);
+// 그래프 그리기
+function drawChart(results) {
+    const ctx = document.getElementById('dividendChart').getContext('2d');
+    const years = results.map(result => result.year);
+    const monthlyDividends = results.map(result => result.monthlyDividend / 10000); // 만원 단위로 변환
 
-    // 차트 설정
-    const myChart = new Chart(ctx, {
+    new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
+            labels: years,
             datasets: [{
-                label: '월 평균 배당금 (만원)',
+                label: '월 평균 배당금 | Average Monthly Dividend',
                 data: monthlyDividends,
                 borderColor: 'rgba(75, 192, 192, 1)',
-                fill: false,
-            }, {
-                label: '연말 총 자산 (만원)',
-                data: totalAssets,
-                borderColor: 'rgba(255, 99, 132, 1)',
-                fill: false,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderWidth: 2,
+                fill: true
             }]
         },
         options: {
-            responsive: true,
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '배당금 (만원) | Dividend (만원)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '연도 | Year'
+                    }
                 }
             }
         }
